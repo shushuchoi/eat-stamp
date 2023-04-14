@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <typeAliases>
+<!-- 		<typeAlias alias="egovMap" type="org.egovframe.rte.psl.dataaccess.util.EgovMap"/>
+		<typeAlias alias="searchVO" type="egovframework.example.sample.service.SampleDefaultVO"/>
+		<typeAlias alias="sampleVO" type="egovframework.example.sample.service.SampleVO"/> -->
+	
+		<!-- membervo 추가-->
+		<typeAlias  alias="memberVO" type="com.EatStamp.domain.MemberVO"/>
+		<typeAlias  alias="stampVO" type="com.EatStamp.domain.StampVO"/>
+		<typeAlias  alias="keywordVO" type="com.EatStamp.domain.KeywordVO"/>
+		<typeAlias  alias="wordVO" type="com.EatStamp.domain.WordVO"/>
+		<typeAlias  alias="searchVO" type="com.EatStamp.domain.SearchVO"/>
+		<typeAlias  alias="searchForm" type="com.EatStamp.domain.SearchForm"/>
+		<typeAlias  alias="restVO" type="com.EatStamp.domain.RestVO"/>
+		<typeAlias  alias="tagVO" type="com.EatStamp.domain.TagVO"/>
+		<typeAlias  alias="tagPostMappingVO" type="com.EatStamp.domain.TagPostMappingVO"/>
+
+    </typeAliases>
+</configuration>

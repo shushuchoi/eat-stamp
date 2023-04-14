@@ -1,0 +1,181 @@
+* {
+  box-sizing: border-box;
+}
+
+
+/* body {
+  background-color: #12191C;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+} */
+
+.scroller-row {
+  overflow: hidden;
+  padding: 0 60px;
+  position: relative;
+}
+
+.scroller-items {
+  align-items: flex-start;
+  /* Seems to fix overfow, but meh */
+  display: flex;
+  overflow-x: visible;
+  width: 100%;
+}
+
+.scroller-item {
+  padding: 0 3px;
+}
+
+.scroller-item--loader {
+  overflow: hidden;
+  padding-bottom: 12.5%;
+  position: relative;
+}
+.scroller-item--loader:before {
+  background-color: #fff;
+  opacity: 0.1;
+  content: "";
+  display: block;
+  height: 100%;
+  position: absolute;
+  width: 100%;
+}
+.scroller-item--loader:after {
+  animation: loading 1.5s infinite;
+  background-image: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.1) 50%, transparent 80%);
+  content: "";
+  display: block;
+  height: 100%;
+  position: absolute;
+  opacity: 0.4;
+  transform: translateX(-200%);
+  width: 100%;
+}
+
+.scroller-item--loader:first-child:before {
+  opacity: 0.2;
+}
+.scroller-item--loader:nth-child(2):before {
+  opacity: 0.16;
+}
+
+@keyframes loading {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.scroller-item--placeholder {
+  visibility: hidden;
+}
+
+.scroller-block {
+  align-items: center;
+  display: flex;
+  padding: 20px 60px;
+  justify-content: space-between;
+}
+
+.scroller-title {
+  color: #fff;
+}
+
+.scroller-nav-button {
+  -webkit-apparence: none;
+  background: rgba(0, 0, 0, 0.33);
+  border: 0;
+  bottom: 0;
+  color: #ffffff;
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  width: 60px;
+}
+.scroller-nav-button svg {
+  fill: #ffffff;
+  height: 35px;
+  width: 35px;
+  transition: transform 0.2s;
+}
+.scroller-nav-button:focus, .scroller-nav-button:hover {
+  outline: none;
+}
+.scroller-nav-button:focus svg, .scroller-nav-button:hover svg {
+  transform: scale(1.25);
+}
+
+.scroller-nav-button--prev {
+  left: 0;
+}
+
+.scroller-nav-button--next {
+  right: 0;
+}
+
+.scroller-pagination-page {
+  background-color: #ffffff;
+  display: inline-block;
+  height: 2px;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+  width: 20px;
+}
+.scroller-pagination-page + .scroller-pagination-page {
+  margin-left: 5px;
+}
+.scroller-pagination-page.scroller-pagination-page--active {
+  opacity: 1;
+}
+
+.card {
+  border-radius: 0;
+}
+
+.card-img {
+  border-radius: 0;
+  display: block;
+  position: relative;
+}
+.card-img > img {
+  border-radius: 0;
+  display: block;
+  max-width: 100%;
+}
+.card-img:after {
+  bottom: 0;
+  border-radius: 0;
+  box-shadow: inset -1px -1px 3px 0px rgba(255, 255, 255, 0.21);
+  content: "";
+  display: block;
+  left: 0;
+  position: absolute;
+  user-select: none;
+  right: 0;
+  top: 0;
+  z-index: 2;
+}
+
+.card-block {
+  padding: 10px;
+}
+
+.card-title {
+  margin: 0;
+  margin-bottom: 10px;
+}
+
+/* Skin */
+.card-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 34% 0;
+}
+
+.card-title {
+  color: #ffffff;
+  font-size: 45px;
+  margin: 0;
+}
