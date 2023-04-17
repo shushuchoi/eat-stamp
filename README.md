@@ -1201,13 +1201,13 @@ import org.egovframe.rte.psl.dataaccess.mapper.Mapper; 로 수정하고
 
 ### `Oracle` 페이징을 `MySQL`로 전환
 
-💡 [Notion - Oracle 페이징을 MySQL로 전환](https://off-odd-white.notion.site/Oracle-MySQL-4fea327cedaf424188d9c76199b77815)   
+💡 [Notion - Oracle 페이징을 MySQL로 전환](https://off-odd-white.notion.site/Oracle-MySQL-4fea327cedaf424188d9c76199b77815)
 
 <br/>
 
 ### `Spring` `Mybatis` `komoran` 형태소 분석
 
-💡 [Notion - Spring Mybatis komoran 형태소 분석](https://off-odd-white.notion.site/Spring-Mybatis-komoran-ebb49741345e48c9b4d18288c80ecbc2)   
+💡 [Notion - Spring Mybatis komoran 형태소 분석](https://off-odd-white.notion.site/Spring-Mybatis-komoran-ebb49741345e48c9b4d18288c80ecbc2)
 
 <br/>
 
