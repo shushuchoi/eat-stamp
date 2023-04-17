@@ -18,7 +18,7 @@
 - 깔끔하고 직관적인 디자인과 세부 기능을 통해 접근성 좋은 사용자 환경 조성
 
 ## STACKS
-**Environment**
+>**Environment**
 
 
 <img src="https://img.shields.io/badge/Eclipse-FE7A16.svg?style=for-the-badge&logo=Eclipse&logoColor=white"> <img src="https://img.shields.io/badge/egovFramework-6DB33F?style=for-the-badge&logo=spring&logoColor=white">  <img src="https://img.shields.io/badge/spring-6DB33F?style=for-the-badge&logo=spring&logoColor=white"> <img src="https://img.shields.io/badge/mysql-4479A1?style=for-the-badge&logo=mysql&logoColor=white">  <img src="https://img.shields.io/badge/apache tomcat-F8DC75?style=for-the-badge&logo=apachetomcat&logoColor=white">
@@ -27,10 +27,7 @@
 **`TortoiseSVN`**
 
 
-
-
-
-**Development**
+>**Development**
 
 
 <img src="https://img.shields.io/badge/java-007396?style=for-the-badge&logo=java&logoColor=white">  <img src="https://img.shields.io/badge/javascript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black">  <img src="https://img.shields.io/badge/jquery-0769AD?style=for-the-badge&logo=jquery&logoColor=white"> <img src="https://img.shields.io/badge/html5-E34F26?style=for-the-badge&logo=html5&logoColor=white"> <img src="https://img.shields.io/badge/css-1572B6?style=for-the-badge&logo=css3&logoColor=white"> 
@@ -39,7 +36,7 @@
 
 
 
-**Communication**
+>**Communication**
 
 
  <img src="https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white">
@@ -48,7 +45,7 @@
  
  
 
-**ETC**
+>**ETC**
 
 
 <img src="https://img.shields.io/badge/fontawesome-339AF0?style=for-the-badge&logo=fontawesome&logoColor=white"> 
@@ -77,4 +74,10 @@
 - - -
 ## 화면 구성 📺
 > 로그인, 회원가입, 비밀번호 찾기
+
+
+
+| 로그인 | 회원가입 | 비밀번호 찾기 |
+| --- | --- | --- |
+| ![](./docs/로그인.png)  | ![](./docs/회원가입.png)  | ![](./docs/pw찾기.png)  |
 
