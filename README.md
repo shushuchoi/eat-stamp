@@ -1,14 +1,11 @@
 # Eat Stamp
 > **2023-03-14 ~ 2023-04-14	/ Web Project**
 
+OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및 프로젝트 진행 과정의 흐름을 높임
 
-> OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및 프로젝트 진행 과정의 흐름을 높임
+서울시 공공 데이터를 사용해 강남구에 위치한 모범 음식점들의 상세 정보 제공
 
-
-> 서울시 공공 데이터를 사용해 강남구에 위치한 모범 음식점들의 상세 정보 제공
-
-
-> **먹은 음식을 일기 형식으로 매일 기록하고, 자주 쓰인 키워드 분석을 통해 데이터상의 음식점 추천**
+**먹은 음식을 일기 형식으로 매일 기록하고, 자주 쓰인 키워드 분석을 통해 데이터상의 음식점 추천**
 
 <br/>
 
@@ -19,6 +16,7 @@
 ## OBJECTIVES
 
 - 전자정부 프레임워크 숙련도 증가
+
 - 프로젝트 서클 파악
 - 사전에 계획된 개발 일정 준수
 - 깔끔하고 직관적인 디자인과 세부 기능을 통해 접근성 좋은 사용자 환경 조성
@@ -49,8 +47,8 @@
 
 
  <img src="https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white">
- 
-<br/>
+
+
 <br/>
 
 
@@ -957,6 +955,24 @@
    ```
 </details>
 
+<details><summary> 식당 상세 </summary>
+
+<br/>
+
+- 상호명, 업태명, 대표 이미지, 전화번호, 위치, 기타 세부 정보 출력
+
+- 식당 찜하기 기능
+   ```
+   - 빈 하트 아이콘 클릭 시 찜한 식당에 추가되고 채운 하트 아이콘으로 변경
+   - 채운 하트 아이콘 클릭 시 찜한 식당에서 삭제되고 빈 하트 아이콘으로 변경
+   ```
+
+- 위치를 카카오 지도 API를 이용해 표시
+
+- ‘목록으로’ 버튼 클릭 시 뒤로가기 동작
+
+</details>
+
 <details><summary> 검색 </summary>
 
 <br/>
@@ -977,3 +993,257 @@
    ```
 - 검색 결과가 6 건 이상이면 PagingUtil을 이용해 페이지 목록 표시 및 이동
 </details>
+
+<details><summary> 마이페이지 </summary>
+
+<br/>
+
+- 페이지 좌측에 고정되어 있는 네비게이션 메뉴 바에서 메뉴 선택 가능 (회원정보/내 식사 기록/찜한 가게/회원 탈퇴)
+
+- 사용자의 프로필, 닉네임, 성별, 나이, 이메일 출력
+   - yyyy-MM-dd로 등록되어 있는 회원 생년월일 데이터를 만 나이로 변경해서 출력
+   ```java
+    // com.EatStamp.web.MemberController
+
+	@RequestMapping(value = "mypage.do")
+	public String mypage(MemberVO vo, HttpSession session, Model model) throws Exception{
+	
+		MemberVO member = (MemberVO) session.getAttribute("member");
+		
+		 // 생년월일 계산
+	    String birthYear = member.getMem_birth().substring(0, 4);
+	    String birthMonth = member.getMem_birth().substring(5, 7);
+	    String birthDay = member.getMem_birth().substring(8, 10);
+	    String birthDate = birthYear + "-" + birthMonth + "-" + birthDay;
+
+	    // 생년월일을 Date 객체로 변환
+	    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+	    Date birth = format.parse(birthDate);
+
+	    // 오늘 날짜와의 차이 계산
+	    Calendar cal = Calendar.getInstance();
+	    int currYear = cal.get(Calendar.YEAR);
+	    int currMonth = cal.get(Calendar.MONTH) + 1;
+	    int currDay = cal.get(Calendar.DAY_OF_MONTH);
+
+	    cal.setTime(birth);
+	    int birthYearInt = cal.get(Calendar.YEAR);
+	    int birthMonthInt = cal.get(Calendar.MONTH) + 1;
+	    int birthDayInt = cal.get(Calendar.DAY_OF_MONTH);
+
+	    int age = currYear - birthYearInt;
+	    if (currMonth < birthMonthInt || (currMonth == birthMonthInt && currDay < birthDayInt)) {
+	        age--;
+	    }
+
+	    model.addAttribute("age", age);
+
+		model.addAttribute("member", member);
+		
+		return "mypage";
+	}
+   ```
+
+- 카카오 회원인 경우 카카오 아이콘 출력, 일반 회원일 경우 잇스탬프 로고 아이콘 출력
+
+- 비밀번호 변경
+   ```
+   - 제약조건: 8 자 이상, 숫자/대소문자/특수문자 포함
+   1) 현재 비밀번호와 입력한 비밀번호의 일치 여부 확인 후 불일치 시 ‘현재 비밀번호가 일치하지 않습니다.’ alert 출력
+   2) 새로운 비밀번호와 제약조건이 맞지 않으면 ‘새로운 비밀번호를 다시 조합해 주세요.’ alert 출력
+   3) 새로운 비밀번호와 새로운 비밀번호 확인이 서로 일치하지 않으면 alert 출력
+   ```
+   ```java
+    // com.EatStamp.web.MemberController
+
+	@RequestMapping(value = "/mypage_pw.do", method = RequestMethod.POST)
+	public String mypage_pw(@RequestParam("mem_num") int mem_num, @RequestParam("mem_email") String mem_email,
+				@RequestParam("mem_pwCheck") String mem_pwCheck, @RequestParam("new_mem_pw") String new_mem_pw,
+								HttpSession session, HttpServletResponse response) throws Exception{
+		
+		//vo에 값 세팅>>service단으로 넘겨주기
+		MemberVO vo = new MemberVO();	
+    	vo.setMem_num(mem_num);
+    	vo.setMem_email(mem_email);
+    	vo.setMem_pw(new_mem_pw);
+		
+		//멤버 비밀번호 받아오기
+    	MemberVO result = service.delete_member_check(vo);
+		
+    	//입력값과 확인값 일치하나 확인
+    	//탈퇴 페이지에서 입력한 비밀번호 확인값 
+    	String pw1 = mem_pwCheck;
+    	
+		//db에 저장된 멤버 비밀번호
+    	String pw2 = result.getMem_pw();
+    	
+    	String newPW = new_mem_pw;
+
+    	//암호화 매치용 변수 생성
+        boolean pwdMatch;
+        
+        //비밀번호 암호화 매치 
+		pwdMatch = pwEncoder.matches(pw1, pw2);
+		 
+	        //입력한 비밀번호와 비밀번호 확인 입력값이 상이할 떄
+	        if(!pwdMatch ) {
+	        	String message = "현재 비밀번호가 일치하지 않습니다.";
+	            response.setContentType("text/html; charset=UTF-8");
+	            PrintWriter out = response.getWriter();
+	            out.println("<script>alert('"+ message +"');</script>");
+	            out.flush();
+	            return "mypage";
+	        } else {
+	        	 //비밀번호 암호화 시키기
+	            String inputPass = newPW;
+	    	    String pwd = pwEncoder.encode(inputPass);
+	    	    vo.setMem_pw(pwd);
+	    		
+	    		//db에 수정된 비밀번호 업뎃시키기
+	    	    int result1 = service.reset_pw(vo);
+	    		
+	    	  //업데이트에 성공하지 못한다면
+	    	    if(0 == result1){
+	    	    	return "mypage";
+	    	    }
+	    	    
+	    	    //업데이트에 성공시
+	    	    return "/login/resetSuccess";
+	        }
+   ```
+   ```javascript
+    //jsp/mypage.jsp
+
+	function checks(){
+	  var pwCheck = document.getElementById("mem_pwCheck").value;
+	  var newPw = document.getElementById("new_mem_pw").value;
+	  var newPwCheck = document.getElementById("new_mem_pwCheck").value;
+	  
+		//최소 8자, 대문자 하나 이상, 소문자 하나 및 숫자 하나, 특수문자 하나>> Test12345678!
+	  var getCheck= RegExp(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$/);
+
+		//비밀번호 유효성검사
+	  if (!getCheck.test(newPw)) {
+		  alert("비밀번호를 형식에 맞게 입력해주세요.");
+		  document.getElementById("new_mem_pw").value = "";
+		  document.getElementById("new_mem_pw").focus();
+		  return false;
+		}
+		
+	  if (pwCheck === "" || newPw === "" || newPwCheck === "") {
+	    alert("빈칸을 모두 입력해주세요.");
+	    return false;
+	  }
+	  
+		
+	  if (newPw !== newPwCheck) {
+	    alert("새로운 비밀번호가 일치하지 않습니다.");
+	    return false;
+	  }
+	  
+	  // 현재 비밀번호와 일치하지 않을 경우
+	  if ("${pwdMatch}" === "false") {
+	    alert("현재 비밀번호가 일치하지 않습니다.");
+	    return false;
+	  }
+
+	  return true;
+	} //checks() end
+   ```
+
+</details>
+
+<details><summary> 회원 탈퇴 </summary>
+
+<br/>
+
+- 회원 탈퇴 주의사항 안내 및 안내사항 동의를 위한 체크박스
+
+- 현재 비밀번호와 입력한 비밀번호의 일치 여부 확인
+   ```
+   - 미입력 시 ‘필수 정보입니다.’ alert 출력
+   - 불일치 시 ‘현재 비밀번호가 일치하지 않습니다.’ alert 출력
+   ```
+
+- ‘회원 탈퇴’ 버튼 클릭 시 ‘탈퇴 완료되었습니다’ alert 출력
+   ```
+   해당 회원 정보, 작성글, 찜 정보 삭제 후 비회원 메인페이지로 이동
+   ```
+
+</details>
+
+<br/>
+
+- - -
+
+<br/>
+
+## 트러블 슈팅
+
+### `ServiceImpl`에 **`@Autowired`** `Mapper` 시 오류
+💣 오류 메시지
+```
+Error creating bean with name '': Unsatisfied dependency expressed through field ''; nested exception is 
+No qualifying bean of type '' available: expected at least 1 bean which qualifies as autowire candidate.
+Dependency annotations: {@org.springframework.beans.factory.annotation.Autowired(required=true)}
+```
+💡 해결
+```
+문제가 되는 Mapper(Bean으로 등록되지 않은 Mapper)에서
+import org.apache.ibatis.annotations.Mapper; 를
+import org.egovframe.rte.psl.dataaccess.mapper.Mapper; 로 수정하고
+
+@Mapper("tagMapper")
+이런 식으로 Mapper 이름을 명시
+```
+
+<br/>
+
+### `Oracle` 페이징을 `MySQL`로 전환
+
+💡 [Notion - Oracle 페이징을 MySQL로 전환](https://off-odd-white.notion.site/Oracle-MySQL-4fea327cedaf424188d9c76199b77815)   
+
+<br/>
+
+### `Spring` `Mybatis` `komoran` 형태소 분석
+
+💡 [Notion - Spring Mybatis komoran 형태소 분석](https://off-odd-white.notion.site/Spring-Mybatis-komoran-ebb49741345e48c9b4d18288c80ecbc2)   
+
+<br/>
+
+### 작성한 글이 없을 때 회원 메인화면 오류
+💣 문제
+   - 키워드 기반 추천 식당을 검색하는 쿼리에 `rMap`의 `key`(키워드) 8 개를 삽입할 때 `key`가 존재하지 않는 경우를 고려하지 않음
+
+💡 해결
+
+   ```java
+   Map<String, Object> comMap = new HashMap<String, Object>();
+   comMap.put("k1", rMap.keySet().toArray()[0]);
+   comMap.put("k2", rMap.keySet().toArray()[1]);
+   comMap.put("k3", rMap.keySet().toArray()[2]);
+   comMap.put("k4", rMap.keySet().toArray()[3]);
+   comMap.put("k5", rMap.keySet().toArray()[4]);
+   comMap.put("k6", rMap.keySet().toArray()[5]);
+   comMap.put("k7", rMap.keySet().toArray()[6]);
+   comMap.put("k8", rMap.keySet().toArray()[7]);
+   comMap.put("start", 1);
+   comMap.put("end", 2);
+   ```
+   - 위의 코드를 아래의 코드로 변경해 `rMap`에 `key`가 없을 경우 `Default Value` 삽입
+   ```java
+	Map<String, Object> comMap = new HashMap<String, Object>();
+	Object[] keyArray = rMap.keySet().toArray();
+	
+	for (int i = 0; i < 8; i++) {
+		if(i < keyArray.length) {
+			comMap.put("k" + (i + 1), keyArray[i]);
+		}else {
+			comMap.put("k" + (i + 1), "null"); 
+			//분석할 text가 없어서 rMap에 key가 안 들어가 있을 때 default value 넣어 줌
+		}
+	}
+	
+	comMap.put("start", 1);
+	comMap.put("end", 2);
+   ```
