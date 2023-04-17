@@ -62,7 +62,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 
 <br/>
 
-## 팀원
+## TEAM MEMBERS
 
 - **이예지** 
 
@@ -76,7 +76,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 
 <br/>
 
-## 목차
+## INDEX
 - [화면 구성](#화면-구성)
 - [구현](#구현)
 - [트러블 슈팅](#트러블-슈팅)
@@ -159,59 +159,510 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 
 <details><summary> 로그인 </summary>
 
-<br/>
 
-- 일반 로그인 및 카카오 API를 이용한 로그인 가능
+- `일반 로그인` 및 `카카오 API`를 이용한 로그인 가능
+	```java
+	// 카카오 로그인 로직
+	@RequestMapping(value = "kakaoLogin.do") //카카오로그인 버튼 클릭했을 때로 제한. 
+	public String kakaoLogin(@RequestParam("code") String code, HttpSession session) {
+		
+		String access_token = service.getAccessToken(code);
+		MemberVO userInfo = service.get_user_info(access_token);		
+		session.setAttribute("member", userInfo);
+		
+		return "main";
+		
+	}//카카오로그인 end
+	
 
+	//카카오 로그인 토큰 발급
+	@Override
+	public String getAccessToken(String authorize_code) {
+		 String access_Token = "";
+	        String refresh_Token = "";
+	        String reqURL = "https://kauth.kakao.com/oauth/token";
+	        
+	        try {
+	            URL url = new URL(reqURL);
+	            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+	            
+	            //    POST 요청을 위해 기본값이 false인 setDoOutput을 true로
+	            conn.setRequestMethod("POST");
+	            conn.setDoOutput(true);
+	            
+	            //    POST 요청에 필요로 요구하는 파라미터 스트림을 통해 전송
+	            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+	            StringBuilder sb = new StringBuilder();
+	            sb.append("grant_type=authorization_code");
+	            sb.append("&client_id=7d9ef6c74111b87a039dd00b4b1812f6");
+	            sb.append("&redirect_uri=http://localhost:8282/kakaoLogin.do");
+	            sb.append("&code=" + authorize_code);
+	            bw.write(sb.toString());
+	            bw.flush();
+	            
+	            // 결과 코드가 200이라면 성공
+	            int responseCode = conn.getResponseCode();
+	 
+	            // 요청을 통해 얻은 JSON타입의 Response 메세지 읽어오기
+	            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+	            String line = "";
+	            String result = "";
+	            
+	            while ((line = br.readLine()) != null) {
+	                result += line;
+	            }
+	            System.out.println("response body : " + result);
+	            
+	            // Gson 라이브러리에 포함된 클래스로 JSON파싱 객체 생성
+	            JsonParser parser = new JsonParser();
+	            JsonElement element = parser.parse(result);
+	            
+	            access_Token = element.getAsJsonObject().get("access_token").getAsString();
+	            refresh_Token = element.getAsJsonObject().get("refresh_token").getAsString(); 
+	            br.close();
+	            bw.close();
+	        } catch (IOException e) {
+	            // TODO Auto-generated catch block
+	            e.printStackTrace();
+	        } 
+	       
+	        return access_Token;
+	    } //카카오 로그인 end
+	
+	
+	//카카오 로그인시 정보 받아오기 + 저장
+	@Override
+	public MemberVO get_user_info(String access_token) {
+		
+		HashMap<String, Object> userInfo = new HashMap<String, Object>();
+		String reqURL = "https://kapi.kakao.com/v2/user/me";
+	    try {
+	        URL url = new URL(reqURL);
+	        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+	        conn.setRequestMethod("POST");
+	        
+	        //요청에 필요한 Header에 포함될 내용
+	        conn.setRequestProperty("Authorization", "Bearer " + access_token);
+	              
+	        //코드 로거로 확인하기
+	        int responseCode = conn.getResponseCode();
+      
+	        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+	        
+	        String line = "";
+	        String result = "";
+	        
+	        while ((line = br.readLine()) != null) {
+	            result += line;
+	        }
+	        
+	        JsonParser parser = new JsonParser ();
+	        JsonElement element = parser.parse(result); 
+	        
+	        JsonObject properties = element.getAsJsonObject().get("properties").getAsJsonObject();
+	        JsonObject kakao_account = element.getAsJsonObject().get("kakao_account").getAsJsonObject();
+	        
+	        String nickname = properties.getAsJsonObject().get("nickname").getAsString();
+	        String email = kakao_account.getAsJsonObject().get("email").getAsString();
+	        
+	        //기타 정보도 추가하기
+	        userInfo.put("nickname", nickname);
+	        userInfo.put("email", email);
+	        
+	        
+	    } catch (IOException e) {
+	        // TODO Auto-generated catch block
+	        e.printStackTrace();
+	    }
+	    
+	    // db정보 저장 여부 확인 
+	    MemberVO result = memberMapper.find_kakao(userInfo);
+	    
+	    if(null == result) {  	
+            //정보가 없으니 정보를 저장.
+	    	memberMapper.kakao_insert(userInfo); 
+            //저장하기위해 repository 로 이동
+            return memberMapper.find_kakao(userInfo);
+            // 정보 저장후 컨트롤러에 정보를 보냄
+        }else {
+            return result;
+            //정보가 있으므로 result 를 리턴함
+        }
+  
+	} //카카오 로그인 시 정보 저장 end
+	```
 
--  카카오 아이콘 클릭 시 회원가입이 되어 있지 않으면 회원가입, 되어 있으면 카카오 로그인으로 이동
--  ‘로그인’ 버튼 클릭 시 유효성 검사 수행
+-  `카카오 아이콘` 클릭 시 회원가입이 되어 있지 않으면 `회원가입`, 되어 있으면 `카카오 로그인`으로 이동
+-  `로그인` 버튼 클릭 시 `유효성 검사` 수행
    
    ``` 
    - 이메일/비밀번호 미입력 또는 불일치 시 ‘아이디, 비밀번호를 확인하세요.’ alert 출력
    - 일치 시 로그인 후 회원 메인화면으로 이동
    ```
-- ‘회원가입’ 버튼 클릭 시 회원가입 페이지로 이동
-- ‘비밀번호를 잊으셨나요?’ 텍스트 클릭 시 비밀번호 찾기 페이지로 이동
+	```java
+	@RequestMapping(value = "/login_check.do", method = RequestMethod.POST)
+	public String login_check(MemberVO vo, HttpServletRequest req, RedirectAttributes rttr) throws Exception {
+		
+		HttpSession session = req.getSession();
+		MemberVO login = service.loginCheck(vo);
+		boolean pwdMatch;
+
+		//카카오 회원의 일반 로그인 시도 검사
+		int kakao_result = service.login_kakaoCheck(vo.getMem_email());
+			if(kakao_result == 1) {
+				return "/login/kakaoLoginAlert";
+			}   
+
+		//이메일 존재 여부 검사
+		int result = service.find_pwEmail(vo.getMem_email());
+			
+		String sResult = Integer.toString(result);
+		int finalResult = Integer.parseInt(sResult);
+		if(finalResult != 1) {
+			return "/login/doNotFindEmail";
+		}
+					
+				
+		//이메일 인증 여부 확인
+		if (service.email_auth_fail(vo.getMem_email()) != 1 ) {
+			return "/login/emailAuthFail";
+		}		
+			
+
+		//null값 확인 + 비밀번호 암호화 매치 + jsp에 정보 전송
+		if(login != null) { 
+			pwdMatch = pwEncoder.matches(vo.getMem_pw(), login.getMem_pw());
+		
+		} else { 
+			pwdMatch = false; 
+		}
+
+		if(login != null && pwdMatch == true) {
+			session.setAttribute("member", login);
+			
+		} else { //비밀번호 불일치 
+			return "/login/passwordNotEqualAlert";
+		}
+		
+		return "redirect:/";
+	
+	}//로그인 end
+	```
+
+- `회원가입` 버튼 클릭 시 `회원가입 페이지`로 이동
+- `비밀번호를 잊으셨나요?` 텍스트 클릭 시 `비밀번호 찾기 페이지`로 이동
 </details>
 
 
 <details><summary> 회원가입 </summary>
 
-<br/>
-
-- 중복 확인 버튼 클릭 시 입력한 이메일의 중복 여부 확인
+- `중복 확인` 버튼 클릭 시 입력한 이메일의 중복 여부 확인
 
  
    ```
    중복 이메일로 회원가입 진행 시 FAIL
    ```
+	```js
+	//이메일 중복 체크
+	$(document).on("click", "#emaliCheckBtn", function(){
+		$.ajax({
+			url : "/emailDupl.do",
+			dataType: "text",
+			type : "post",
+			data:{
+					mem_email : $('#email-form').val()
+					},
+			success : function(data){		            
+						if(data == 1){ 
+								alert("중복된 이메일입니다.");
+						} else { 
+									$("#emalCheck").attr("value", "Y");
+									alert("사용 가능한 이메일입니다.");
+							} //else end
+						}, //success end
+				error : function(data){
+					console.log(data);
+				} 	//error end
+					
+		}) //ajax end	
+	}); //onclick end
+	```
 
-- 비밀번호 제약 조건: 8 자 이상, 숫자/대소문자/특수문자 포함
 
-- 감긴 눈 아이콘 클릭 시 입력한 비밀번호 숨기기 해제
-- 성별/프로필 아이콘 라디오 버튼 형식으로 선택
-- ‘회원가입’ 버튼 클릭 시 빈 정보 유무에 따라
+- 비밀번호 제약 조건: `8 자 이상`, `숫자/대소문자/특수문자 포함`
+
+- `감긴 눈 아이콘` 클릭 시 입력한 비밀번호 숨기기 해제
+	```js
+	//클릭시 비밀번호 확인
+	$('#pwd_input_box i').on('click',function(){
+		$('input').toggleClass('active');
+		if($('input').hasClass('active')){
+			$(this).attr('class',"fa fa-eye-slash fa-lg")
+			.prev('input').attr('type',"text");
+		}else{
+			$(this).attr('class',"fa fa-eye fa-lg")
+			.prev('input').attr('type','password');
+		}
+	});
+	```
+- 성별/프로필 아이콘 `라디오 버튼` 형식으로 선택
+- `회원가입` 버튼 클릭 시 빈 정보 유무 확인
    ```
    - SUCCESS: ‘회원가입 완료’ alert 출력 후 비회원 메인화면으로 이동
    - FAIL: 경고 alert 출력
    ```
+	```java
+	// 회원가입 로직
+	@RequestMapping(value = "joinCheck.do")
+   	 public String joinCheck(MemberVO vo, Errors errors, Model model, String mem_email) throws Exception{
+		
+    	//비밀번호 칸 입력값
+    	String pw1 = vo.getMem_pw();
+    	//비밀번호 확인 칸 입력값
+    	String pw2=vo.getMem_pwCheck();
+	
+        //작성한 정보를 유지, joinSuccessForm에 name전송
+		model.addAttribute("MemberVO", vo);
+
+        //만약 회원가입에 실패한다면
+        if (errors.hasErrors()) {
+            //작성중이던 폼 그대로 유지
+            return "/login/join";
+        }
+        
+        //입력한 비밀번호와 비밀번호 확인 입력값이 상이할 떄
+        if(! pw1.equals(pw2)) {
+        	 return "/login/joinPwNotEqual";	
+        }
+        
+    	// 이메일이 중복일 때
+        int email_result = service.emailDuplCheck(mem_email);
+    		if(email_result == 1) {
+    			return "/login/joinEmailDupl";
+    	}       
+    		
+        //유효성 검사를 통과하면 insert 후 페이지 이동
+ 	   //비밀번호 암호화
+	    String inputPass = pw1;
+	    String pwd = pwEncoder.encode(inputPass);
+	    vo.setMem_pw(pwd);
+	    
+        int result = service.insertMember(vo);
+        if(result == 1){
+           try { 
+               service.send_join_certification_mail(vo); //인증메일 보내기
+                
+         } catch (TaskRejectedException e) {
+        	 
+        	 return "/login/emailAuthFail";
+          }
+            return "/login/joinSuccess"; //회원가입 성공 페이지로 이동
+        }
+        return "/login/join";
+    } //회원가입end	
+	```	
+- `form`의 `onsubmit()` 기능을 이용한 `유효성 검사`
+	```js
+	//조건 미충족시 false값을 반환하는 유효성 검사 함수 
+	 function checks(){
+		var getMail = RegExp( /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i);
+		//최소 8자, 대문자 하나 이상, 소문자 하나 및 숫자 하나, 특수문자 하나>> Test12345678!
+		 var getCheck= RegExp(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$/); 
+		 var iconCheck = false;
+		 var genderCheck = false;
+		      
+	           
+	      //이메일 유효성 검사
+	      if(!getMail.test($("#email-form").val())){
+	        alert("이메일형식에 맞춰 입력해주세요")
+	        $("#email-form").val("");
+	        $("#email-form").focus();
+	        return false;
+	      }
+	          
+	      //비밀번호 유효성검사
+	      if(!getCheck.test($("#pass-form").val())){
+	        alert("비밀번호를 형식에 맞게 입력해주세요.");
+	        $("#pass-form").val("");
+	        $("#pass-form").focus();
+	        return false;
+	      }
+	           
+	      //비밀번호 매치 확인
+	      if($("#pass-form").val() != $("#passCheck-form").val()){
+	          alert("비밀번호가 상이합니다");
+	          $("#pass-form").val("");
+	          $("#passCheck-form").val("");
+	          $("#pass-form").focus();
+	          return false;
+	      } 
+	          
+	      //라디오버튼 체크(성별) 여부 확인
+	      if($(':radio[name="mem_genderCode"]:checked').length < 1){
+		  alert('성별을 선택해주세요');                        
+		  return false;
+		}
+	  	
+	      //라디오버튼 체크(프로필 아이콘) 여부 확인
+	      if($(':radio[name="mem_profileCode"]:checked').length < 1){
+		  alert('프로필 아이콘을 선택해주세요');                        
+		  return false;
+		}
+		  	
+		//생년월일 
+		var dateStr = $("#birth_form").val();		
+		var year = Number(dateStr.substr(0,4)); // 입력한 값의 0~4자리까지 (연)
+		var month = Number(dateStr.substr(4,2)); // 입력한 값의 4번째 자리부터 2자리 숫자 (월)
+		var day = Number(dateStr.substr(6,2)); // 입력한 값 6번째 자리부터 2자리 숫자 (일)
+		var today = new Date(); // 날짜 변수 선언
+		var yearNow = today.getFullYear(); // 올해 년도 가져옴
+
+			if (dateStr.length <=8) {
+			// 1900 보다 작거나 yearNow 보다 크다면 false를 반환
+			if (1900 > year || year > yearNow){
+				alert("생년월일을 확인해주세요.");
+					return false;
+				
+			}else if (month < 1 || month > 12) {
+				alert("생년월일을 확인해주세요.");	
+					return false;
+			
+			}else if (day < 1 || day > 31) {
+				alert("생년월일을 확인해주세요.");
+					return false;
+				
+			}else if ((month==4 || month==6 || month==9 || month==11) && day==31) {
+				alert("생년월일을 확인해주세요."); 
+					return false;
+					
+			}else if (month == 2) {
+					
+				var isleap = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+				
+				if (day>29 || (day==29 && !isleap)) {
+					alert("생년월일을 확인해주세요.");
+						return false;
+
+			}else{
+				//입력된 생년월일이 8자 초과
+				alert("생년월일을 확인해주세요.");
+				return false;
+			}
+
+	} //checks end
+	```
+
+- `유효성 검사` 통과 시 `spring security`를 이용한 `비밀번호 암호화`를 통해 `DB`에 저장
 </details>
 
 
 <details><summary> 비밀번호 찾기 </summary>
 
-<br/>
 
-- 이메일을 입력하고 ‘인증번호 전송’ 버튼 클릭 시 입력한 이메일의 존재 여부 확인 후
+- 이메일을 입력하고 `인증번호 전송` 버튼 클릭 시 입력한 이메일의 존재 여부 확인
 
  
    ```
    - 존재하지 않는 이메일일 경우 ‘존재하지 않는 이메일입니다.’ 메시지 출력
    - 존재하는 이메일일 경우 인증번호 메일 전송
    ```
+	```js
+	//유효성 검사용 변수 생성
+	var flag = true;
+	var flag2 = true;
+	
+	//비밀번호 찾기 시 이메일 입력 값 전달 ajax
+		function get_email_check(){
+			
+		    $.ajax({
+				url : "/findPw_check.do",
+				dataType: "text",
+				type : "post",
+				data:{
+						mem_email : $('#email-form').val()
+						},
+				success : function(data){		            
+							if(data == 0){ 
+									//조회 데이터가 없다면
+									alert("가입 내역이 없는 이메일입니다. 다시 확인해주세요.");
+									flag2 = false;
+									
+							} else { 
+									//조회 데이터가 존재한다면
+									//이메일 인증번호 전송 함수 실행 
+									pwd_regist_email();
+									flag2 = true;
+										
+									//error1 = true;
+								} //else end
+							}, //success end
+				error : function(data){
+						console.log(data);
+					} 	//error end
+				         
+			}) //ajax end	
+			    	
+			return flag2;	
+			
+		} //getemailcheck end
+		
+		
+	//비밀번호 찾기 시 이메일 인증코드 전송 ajax
+	function pwd_regist_email(){
+		
+			$.ajax({
+				url : "/find_pw_register_mail.do",
+				type : "post",
+				data:{
+						mem_email : $('#email-form').val()
+						},
+				success : function(data){		            
+						if(data == 1){   
+									//인증번호 전송에 성공했다면
+									alert("인증번호가 전송되었습니다. ");
+							} else { 
+								alert("인증번호 전송에 실패했습니다. 다시 시도해주세요.");
+								} //else end
+							}, //success end
+				error : function(data){
+						console.log(data);
+					} 	//error end
+						
+			}) //ajax end	
+	}// pwd_regist_email end
+	```
+	```java
+	//비밀번호 찾기 이메일 인증번호 전송
+	@Override
+	public int auth_find_pwd_mail( String mem_email ) throws Exception {
+		
+		Random r = new Random();
+		int num = r.nextInt(999999); //랜덤난수설정
+		
+		MemberVO vo = new MemberVO();
+		
+		//난수값 컬럼에 세팅
+		 vo.setMem_auth_pwEmail(num);
+		 vo.setMem_email(mem_email);
+		
+	     //메일을 보냅시다
+		 MailHandler sendMail = new MailHandler(mailSender);
+	        sendMail.setSubject("[EatStamp 인증메일 입니다.]");
+	        sendMail.setText(
+	        		//string 변수 선언해서 저장 
+	                "<h1>EatStamp 비밀번호 재설정 인증코드</h1>" +
+	                "<br>아래 인증번호를 입력해주세요." +
+	                "<br>회원님의 인증번호는" + num +"입니다." +
+	                "<br>정확하게 입력해주세요.");
+	        sendMail.setFrom("ejchoiedsk@gmail.com", "EatStamp");
+	        sendMail.setTo(mem_email);
+	        sendMail.send();	
+	        
+	        return memberMapper.update_pwd_find_mail_key(vo);        
+	}
+	```
 
-- 발송된 인증번호 입력 후 ‘다음’ 버튼 클릭 시 일치 여부 유효성 검사
+- 발송된 인증번호 입력 후 `다음` 버튼 클릭 시 `일치 여부 유효성 검사`
    ```
    - SUCCESS: 비밀번호 재설정 화면으로 이동
    - FAIL: ‘인증번호가 일치하지 않습니다.’ 메시지 출력
@@ -228,14 +679,13 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
    - 불일치 상태로 변경 시 ‘비밀번호가 일치하지 않습니다.’ 메시지 출력
    ```
 
-- 감긴 눈 아이콘 클릭 시 입력한 비밀번호 숨기기 해제
+- `감긴 눈 아이콘` 클릭 시 입력한 비밀번호 숨기기 해제
 
-- 비밀번호 변경 성공 시 로그인 페이지로 이동
+- 비밀번호 변경 성공 시 `로그인 페이지`로 이동
 </details>
 
 <details><summary> 비회원 메인화면 </summary>
 
-<br/>
 
 - 비회원과 회원 메인 화면의 헤더 아이콘 상이
 
@@ -260,8 +710,6 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 
 <details><summary> 회원 메인화면 </summary>
 
-<br/>
-
 - 비회원과 회원 메인 화면의 헤더 아이콘 상이
 
  
@@ -270,7 +718,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
    - 마이페이지 및 로그아웃 페이지로 이동하는 아이콘 (Mouseover > Mini menu bar Dropdown)
    ```
 
-- 헤더 드롭다운
+- 헤더 `Dropdown`
 
    ```html
     <!--jsp/egovframework/common/header.jsp-->
@@ -323,7 +771,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	</style>
    ```
 
-- 내가 쓴 글에서 형태소 분석(komoran library)을 통해 키워드 추출
+- 내가 쓴 글에서 형태소 분석`komoran library`을 통해 키워드 추출
    - 사용한 빈도수가 높은 순으로 8 개 출력
    ```java
     // com.EatStamp.service.impl.WordAnalysisServiceImpl
@@ -399,7 +847,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	
 	model.addAttribute("rMap", rMap);
    ```
-   - 색상은 랜덤 색상 추출 방식으로 출력
+   - `랜덤 색상 추출 방식`으로 색상 출력 (새로고침 시마다 변경)
    ```html
     <!--jsp/main.jsp-->
 
@@ -446,7 +894,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 		</script>
    ```
 
-- 추출한 키워드에 적합한 추천 식당 데이터를 2 개 출력
+- 추출한 키워드에 적합한 `추천 식당 데이터`를 2 개 출력
    ```java
     // com.EatStamp.web.MemberController
 
@@ -475,7 +923,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	model.addAttribute("recCount", recCount);
    ```
 
-- 내 기록/찜한 식당을 2 개 출력
+- `내 기록/찜한 식당`을 2 개 출력
    ```
    더보기 클릭 시 마이페이지 내의 내 기록/찜한 식당 목록 화면으로 이동
    ```
@@ -483,8 +931,6 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 </details>
 
 <details><summary> 글 작성 </summary>
-
-<br/>
 
 - 이미지 첨부
    ```
@@ -530,7 +976,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	file.transferTo(saveFile);
    ```
 
-- 이미지 첨부 시 실시간 미리보기 출력
+- 이미지 첨부 시 `실시간 미리보기` 출력
    ```java
     // com.EatStamp.web.StampController
 
@@ -582,7 +1028,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	});
    </sctipt>
    ```
-- 제목 및 내용 입력 시 (입력한 글자 수/제한 글자 수) 실시간 출력
+- 제목 및 내용 입력 시 `입력한 글자 수/제한 글자 수` 실시간 출력
    ```javascript
 	//========글자수 카운트========//
 	//제목 textarea에 내용 입력시 글자수 체크
@@ -616,7 +1062,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 		  }
 	});
    ```
-- ‘검색’ 버튼 클릭 시 자식창에서 검색 자동완성 기능으로 상호명 검색, 부모창으로 값 전송
+- `검색` 버튼 클릭 시 `자식창`에서 `검색 기능`으로 상호명 검색, `부모창`으로 값 전송
    ```java
     // com.EatStamp.web.StampController
 
@@ -703,7 +1149,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
    </script>
    ```
 
-- 식당 검색이 완료되면 평가를 단일 선택 체크박스로 선택
+- 식당 검색이 완료되면 평가를 `단일 선택 체크박스`로 선택
    ```html
 
 	<!-- 체크박스 -->
@@ -737,7 +1183,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
    </script>
    ```
 
-- #으로 구분되는 태그 등록 가능
+- `#`으로 구분되는 `태그` 등록 가능
    ```java
     // com.EatStamp.service.impl.TagServiceImpl
 
@@ -788,28 +1234,21 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	});
    ```
 
-- ‘등록’ 버튼 클릭 후 SUCCESS 시 작성글 상세페이지로 이동
-- ‘취소’ 버튼 클릭 시 ‘기록을 취소하시겠습니까?’ alert 출력 후 이전 페이지로 복귀
+- `등록` 버튼 클릭 후 `SUCCESS` 시 작성글 상세페이지로 이동
+- `취소` 버튼 클릭 시 `기록을 취소하시겠습니까?` `alert` 출력 후 이전 페이지로 복귀
 </details>
 
 <details><summary> 글 상세 </summary>
 
-<br/>
+- `사용자의 프로필` `글 제목` `작성일시` `이미지` `내용` `태그` 출력
 
-- 사용자의 프로필, 글 제목, 작성일시, 이미지, 내용 출력
-
-- 글 작성에서 검색한 장소와 평가 표시
-- 입력한 태그 출력
-```
-- ‘수정’ 버튼 클릭 시 글 수정 페이지로 이동
-- ‘삭제’ 버튼 클릭 시 ‘삭제하시겠습니까?’ alert 출력 후 ‘예’를 선택하면 게시글 삭제 및 목록 페이지로 이동
-- ‘목록’ 버튼 클릭 시 마이페이지 내 글 목록 페이지로 이동
-```
+- `글 작성에서 검색한 장소`와 `평가` 표시
+- `수정` 버튼 클릭 시 `글 수정 페이지`로 이동
+-  `삭제` 버튼 클릭 시 `삭제하시겠습니까?` `alert` 출력 후 `예`를 선택하면 `게시글 삭제` 및 `목록 페이지`로 이동
+- `목록` 버튼 클릭 시 마이페이지 내의 `내 글 목록 페이지`로 이동
 </details>
 
 <details><summary> 글 수정 </summary>
-
-<br/>
 
 - 이미 등록된 이미지가 있다면 초기 미리보기 이미지 세팅
    ```html
@@ -900,19 +1339,17 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
     }
    ```
 
-- ‘수정’ 버튼 클릭 후 SUCCESS 시 작성 내용 수정, 해당 게시글 상세 페이지로 이동
-- ‘취소’ 버튼 클릭 시 ‘취소하시겠습니까?’ alert 출력 후 ‘예’를 선택하면 게시글 상세 페이지로 이동
+- `수정` 버튼 클릭 후 `SUCCESS` 시 `작성 내용 수정`, `게시글 상세 페이지`로 이동
+- `취소` 버튼 클릭 시 `취소하시겠습니까?` `alert` 출력 후 `예`를 선택하면 `게시글 상세 페이지`로 이동
 </details>
 
 <details><summary> 내 글 목록 </summary>
 
-<br/>
+- `+` 아이콘 클릭 시 `글 작성 페이지`로 이동
 
-- ‘+’ 아이콘 클릭 시 글 작성 페이지로 이동
+- 사용자가 작성한 글을 한 페이지에 5 개씩 출력
 
-- 사용자가 작성한 글을 한 페이지에 5 개씩 목록으로 출력
-
-- 작성글이 6 개 이상일 경우 PagingUtil을 이용해 페이지 목록 표시 및 이동
+- 작성글이 6 개 이상일 경우 `PagingUtil`을 이용해 페이지 목록 표시 및 이동
    ```xml
     <!--StampMapper.xml-->
     <!--Oracle rnum을 MySQL rnum으로 변환-->
@@ -959,49 +1396,481 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 
 <br/>
 
-- 상호명, 업태명, 대표 이미지, 전화번호, 위치, 기타 세부 정보 출력
+- `상호명` `업태명` `대표 이미지` `전화번호` `위치` `기타 세부 정보` 출력
 
-- 식당 찜하기 기능
+- `식당 찜하기` 기능
    ```
    - 빈 하트 아이콘 클릭 시 찜한 식당에 추가되고 채운 하트 아이콘으로 변경
    - 채운 하트 아이콘 클릭 시 찜한 식당에서 삭제되고 빈 하트 아이콘으로 변경
    ```
+	```js
+	//찜하기 클릭 시 실행 ajax
+	function addR_like(){
+		$.ajax({    
+			url : "/add_rest_like.do",
+			data : {
+					r_num : $('#r_num').val()
+					},
+			dataType : "json",
+			type     : "post",
+			async    : true,
+			success  : function(data) {	            	
+						
+					if(data == 1){   
+						//가게 등록에 성공했다면
+						//아이콘 변경
+					document.getElementById("empty_heart").innerHTML = "<i class='fa-solid fa-heart'></i>";
+									
+						//아이디값 변경
+						$("#empty_heart").attr('id', 'full_heart');
+								
+								alert("해당 가게가 찜 목록에 추가되었습니다.");
+								
+						//찜하기 취소 ajax용으로 r_like_num을 새로 받아오기, ajax함수 추가 
+							plusR_like();
+								
+						} else { 
+								alert("찜하기에 실패했습니다. 다시 시도해주세요.");
+						} //else end 	
+				
+					},  //success end    
+					
+					error : function(data) {
+						console.log("찜하기 오류");
+						alert("찜하기에 실패했습니다. 다시 시도해주세요. 222");
+					
+					}//error end
+					
+			}); //ajax end
+		}//찜하기 등록 함수 end
 
-- 위치를 카카오 지도 API를 이용해 표시
+	function plusR_like(){
+		$.ajax({    
+			url : "/plus_rest_like.do",
+			data : {
+						r_num : $('#r_num').val()
+					},
+			dataType : "json",
+			type     : "post",
+			async    : true,
+			success  : function(data) {	            	
+							
+						if(null != data){   
+									
+							$("#r_like_num").attr('value', data);
+									
+							} else { 
+								alert("찜하기 오류입니다.");
+							} //else end 	
+					
+						},  //success end    
+						
+			error : function(data) {
+						console.log("추가로 받아오기 오류");
+						
+						}//error end
+						
+			}); //ajax end
+		}//찜하기 등록 함수 end
 
-- ‘목록으로’ 버튼 클릭 시 뒤로가기 동작
+	//찜하기 취소 클릭 시 실행 ajax
+	function deleteR_like(){
+		$.ajax({    
+							
+			url : "/delete_rest_like.do",
+			data : {
+					r_num : $('#r_num').val(),
+					r_like_num : $('#r_like_num').val()
+				},
+			dataType : "json",
+			type     : "post",
+			async    : true,
+			success  : function(data) {	            	
+								
+					if(data == 1){   
+							//가게 삭제에 성공했다면
+							//아이콘 변경
+						document.getElementById("full_heart").innerHTML = "<i class='fa-regular fa-heart'></i>";
+										
+						//아이디값 변경
+						$("#full_heart").attr('id', 'empty_heart');
+										
+							alert("해당 가게가 찜하기 목록에서 삭제되었습니다..");
+											
+						} else { 
+									alert("삭제에 실패했습니다. 다시 시도해주세요.");
+						} //else end 	
+					
+					},  //success end    
+							
+			error : function(data) {
+					console.log("찜하기 삭제 오류");
+					alert("찜하기 삭제 에 실패했습니다. 다시 시도해주세요. 222");
+							
+				}//error end
+							
+		}); //ajax end
+	}//찜하기 삭제 함수 end
+	```
+
+
+- 위치를 `카카오 지도 API`를 이용해 표시
+	```js
+	//지도 불러오기용 변수 설정
+	var view_add = $('#rest_add').val();
+
+	//지도 생성하기
+	var mapContainer = document.getElementById('map'), // 지도 표시 div 
+		mapOption = {
+			center: new kakao.maps.LatLng(33.450701, 126.570667), // 지도 중심좌표
+			level: 3 // 지도 확대 레벨
+	};  
+
+	// 지도를 생성  
+	var map = new kakao.maps.Map(mapContainer, mapOption); 
+
+	// 주소-좌표 변환 객체를 생성
+	var geocoder = new kakao.maps.services.Geocoder();
+
+	// 주소로 좌표를 검색 >>검색값 view_add
+	geocoder.addressSearch(view_add , function(result, status) {
+
+		// 정상적으로 검색이 완료됐으면 
+		if (status === kakao.maps.services.Status.OK) {
+
+			var coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+
+			// 결과값으로 받은 위치를 마커로 표시
+			var marker = new kakao.maps.Marker({
+				map: map,
+				position: coords
+			});
+
+			// 인포윈도우로 장소에 대한 설명을 표시
+			var infowindow = new kakao.maps.InfoWindow({
+				content: '<div style="width:150px;text-align:center;padding:6px 0;">식당 정보</div>'
+			});
+			infowindow.open(map, marker);
+
+			// 지도의 중심을 결과값으로 받은 위치로 이동
+			map.setCenter(coords);
+			} else{
+				
+				alert("지도표시오류");
+			}
+		});    
+	```
+
+
+- `목록으로` 버튼 클릭 시 뒤로가기 동작
 
 </details>
 
 <details><summary> 검색 </summary>
-
-<br/>
 
 - 검색 전 초기 세팅
    ```
    - 검색창과 로그인한 사용자가 작성한 적 있는 추천 해시태그 목록, 토글 버튼만 출력
    - 토글 버튼 클릭 시 전체 식당 목록과 내가 쓴 글 목록 출력
    ```
+   ```html
+    <!--jsp/searchPage.jsp-->
 
-- 추천 해시태그 목록 클릭 시 해당 해시태그가 존재하는 게시글 검색 및 출력
+	<form id="searchForm" name="searchForm">
+	<!--  페이징 요청하는 자바스크립트 함수명 // 검색 버튼 바뀔 때마다 js단에서 처리해주기 -->
+		<input type="hidden" id="function_name" name="function_name" value="getSearchNomalList" />
+				<input type="hidden" id="current_page_no" name="current_page_no" value="1" />
+				<input type = "hidden"  id ="mem_num" name ="mem_num" value = "${member.mem_num}">
+		<input type="text" id="search_text" name="search_keyword">   
+		<button type="button" id = "searchBtn"> <i  class="fa-solid fa-magnifying-glass header_search"></i> </button>	
+	</form>
+		
+	<br>
+	<!-- 추천 해시 출력 영역 -->
+	<div id="tag_result"> </div>
+					
+	<!--  검색 전환용 토글 출력-->			
+	<div class="centerer">
+		<div class="switcher">
+				<input type="radio" name="balance" value="yin" id="yin" class="switcher__input switcher__input--yin" >
+				<label for="yin" class="switcher__label" id="popular"> 식당 </label>
+				
+				<input type="radio" name="balance" value="yang" id="yang" class="switcher__input switcher__input--yang" checked="">
+				<label for="yang" class="switcher__label" id="recent"> 내 스탬프 </label>
+				
+			<span class="switcher__toggle"></span>
+	</div>
+   ```
 
-- 일반 검색 시 해당 키워드가 존재하는 게시글 및 식당 정보 출력 (토글 버튼으로 게시글/식당 정보 이동)
-- ‘#’ 붙여서 검색 시 해당 해시태그가 존재하는 게시글만 검색 및 출력
+- `추천 해시태그 목록` 클릭 시 해당 해시태그가 존재하는 게시글 검색 및 출력
+   ```javascript
+	//페이지 실행 시 추천 태그
+	function getRecommendTag(){		
+		$.ajax({    
+							
+			url : "/get_recommendTag.do",
+			data : {
+				mem_num : $('#mem_num').val()
+				},
+			dataType : "json",
+			type     : "post",
+			success  : function(data) {
+									
+					var div = "";
+							
+					$(data).each(function(){
+								
+					div += "<div class= 'oneTag'>";
+					div += "<span style='font-size: 20px;' class ='tag_mix' href= '/tag_semiSearch.do?tag_content="
+							+ this.tag_content + "&mem_num=" + this.mem_num+" '>"+ "#"  +this.tag_content +"</span>";    
+					div += "</div>";         
+		
+					})//each end
+							
+						$("#tag_result").html(div);
+										
+					},  //success end    
+							
+			error : function(data) {
+						console.log("태그 추천 오류");
+				}//error end
+							
+			}); //ajax end
+	}//태그 추천 호출 함수 end
+   ```
+
+- 일반 검색 시 해당 키워드가 존재하는 게시글 및 식당 정보 출력
+- `토글 버튼`으로 `게시글/식당 정보` 이동
+   ```js
+   //검색 버튼 클릭 시 ajax > 기본 내 글 검색
+	$(document).on("click", "#searchBtn", function(){
+		
+		textElement.value = "getSearchNomalList";
+		
+		console.log(textElement.value);
+	
+		getSearchNomalList();
+		   
+	}); //onclick end
+		
+		
+	//스위치 버튼 클릭 시 ajax > 기본 내 글 검색
+	$(document).on("click", "#yang", function(){
+	
+		textElement.value = "getSearchNomalList";
+	
+		console.log(textElement.value);
+		
+		getSearchNomalList();
+			   
+	}); //onclick end
+		
+	//스위치 버튼 다시 클릭 시 ajax > 레스토랑 정보 검색
+	$(document).on("click", "#yin", function(){
+			
+			textElement.value = "getSearchRestList";
+			
+			console.log(textElement.value);
+		
+			getSearchRestList();
+				   
+	}); //onclick end
+   ```
+
+- `#` 붙여서 검색 시 해당 해시태그가 존재하는 게시글만 검색 및 출력
    ```
    - 단일 태그 검색 및 다중 태그 검색 가능
    - 다중 태그 검색(해시태그를 두 개 이상 검색) 시 검색한 해시태그가 존재하는 게시글 모두 출력
    ```
-- 검색 결과가 6 건 이상이면 PagingUtil을 이용해 페이지 목록 표시 및 이동
+	```java
+	@ResponseBody
+	@RequestMapping(value = "/search_stampCheck.do", method = RequestMethod.POST, produces = "application/text; charset=utf8" )
+	public String search_check_stamp(HttpSession session, 
+					SearchForm form,
+					HttpServletResponse response,
+					HttpServletRequest request) throws Exception {
+			
+				
+			//세션에서 넘버값 받아오기
+			MemberVO vo = (MemberVO)session.getAttribute("member");
+					
+			//#문자열 구분하기 위해 파라미터값을 담아서 변수 지정
+			String hash_markOff = form.getSearch_keyword(); 
+			
+			//파싱용 해시태그 정규식 패턴 생성 >> 테스트
+			Pattern pattern = Pattern.compile("#(\\S+)");
+			
+			//들어온 검색어에 #(해시태그용 검색)이 있다면
+			if(hash_markOff.contains("#")) {
+				
+				//패턴 검사
+				Matcher matcher = pattern.matcher(hash_markOff);
+				
+				List<String> tags = new ArrayList<String>();
+				
+				//반복문 사용해서 일치하는 문자열 등록
+				while (matcher.find()) {
+					tags.add(matcher.group(1));
+				}
+				
+				System.out.println("해시태그 파싱 결과>>>> " + tags.toString()); //# 떨어진 파싱값 확인 
+				
+				//util사용하기 전에 #떨어진 문자열 form에 set
+			
+				form.setTag_list(tags);
+				
+				form.setSearch_keyword(tags.toString());
+
+				ResultUtil resultUtils = service.getTagSearchList(form);
+				
+				// json 파싱해서 넘기기
+				String json = new Gson().toJson(resultUtils);
+				
+				return json;
+				
+			}else { //해시태그 검색이 아니라면
+				
+				ResultUtil resultUtils = service.getNomalSearchList(form);
+				
+				// json 파싱해서 넘기기
+				String json = new Gson().toJson(resultUtils);
+				
+				return json;
+			}
+		} //일반 검색end
+	```
+
+	```java
+
+	@Override
+		public ResultUtil getNomalSearchList(SearchForm form) throws Exception {
+			
+			ResultUtil resultUtil = new ResultUtil();
+			
+				CommonVO commonVO = new CommonVO();
+		
+				//검색결과 수 구하기
+				int totalCount = searchMapper.selectStampRowCount(form);
+				
+				if (totalCount != 0) {
+					CommonForm commonForm = new CommonForm();
+					commonForm.setFunction_name(form.getFunction_name());
+					commonForm.setCurrent_page_no(form.getCurrent_page_no());
+					commonForm.setCount_per_page(10);
+					commonForm.setCount_per_list(5);
+					commonForm.setTatal_list_count(totalCount);
+					commonVO = PagingUtil2.setPageUtil(commonForm);
+				}
+		
+				form.setLimit(commonVO.getLimit());
+				form.setOffset(commonVO.getOffset());
+		
+				List<SearchVO> list = searchMapper.nomal_searchCheck(form); //게시글 정보 리스트 가져오는 메소드 
+		
+				HashMap<String, Object> resultMap = new HashMap<String, Object>();
+				resultMap.put("list", list);
+				resultMap.put("totalCount", totalCount);
+				resultMap.put("pagination", commonVO.getPagination());
+		
+				resultUtil.setData(resultMap);
+				resultUtil.setState("SUCCESS");
+		
+				return resultUtil;
+			
+		}
+	```
+- 검색 결과가 6 건 이상이면 `PagingUtil`을 이용해 페이지 목록 표시 및 이동
+	```java
+	@getter
+	@setter
+	@toString
+	public class CommonForm {
+		
+		String function_name;
+		int current_page_no;
+		int count_per_page;
+		int count_per_list;
+		int tatal_page_count;
+		int tatal_list_count;
+		int limit;
+		int offset;
+	}
+				
+	```
+
+	```java
+	public class PagingUtil {
+		
+		public static CommonVO setPageUtil(CommonForm commonForm) {
+			
+		CommonVO commonVO = new CommonVO();
+	
+			String pagination = ""; // 페이징 결과 값
+			String functionName = commonForm.getFunction_name(); // 페이징 목록을 요청하는 자바스크립트 함수명
+			int currentPage = commonForm.getCurrent_page_no(); // 현재 페이지 번호
+			int countPerList = commonForm.getCount_per_list(); // 한 화면에 출력될 게시물 수
+			int countPerPage = commonForm.getCount_per_page(); // 한 화면에 출력될 페이지 수
+			int totalListCount = commonForm.getTatal_list_count(); // 총 게시물 수
+			int totalPageCount = totalListCount / countPerList; // 총 페이지 수
+			if (totalListCount % countPerList > 0) { // 총 페이수를 구할 때 int형으로 계산하면 나머지가 있는 경우 게시물이 존재하기 때문에 총 페이지의 수를 수정
+				totalPageCount = totalPageCount + 1;
+			}
+	
+			int viewFirstPage = (((currentPage - 1) / countPerPage) * countPerPage) + 1; // 한 화면에 첫 페이지 번호
+			int ViewLastPage = viewFirstPage + countPerPage - 1; // 한 화면에 마지막 페이지 번호
+			if (ViewLastPage > totalPageCount) { // 마지막 페이지의 수가 총 페이지의 수보다 큰 경우는 게시물이 존재하지 않기 때문에 마지막 페이지의 수를 수정
+				ViewLastPage = totalPageCount;
+			}
+	
+			int totalFirstPage = 1; // 전체 페이지 중에 처음 페이지
+			int totalLastPage = totalPageCount; // 전체 페이지 중에 마지막 페이지
+			int prePerPage = 0; // 이전 화면에 첫번째 번호
+			if (viewFirstPage - countPerPage > 0) {
+				prePerPage = viewFirstPage - countPerPage;
+			} else {
+				prePerPage = totalFirstPage;
+			}
+			int nextPerPage = 0; // 이후 화면에 첫번째 번호
+			if (viewFirstPage + countPerPage < totalPageCount) {
+				nextPerPage = viewFirstPage + countPerPage;
+			} else {
+				nextPerPage = totalPageCount;
+			}
+	
+			// 페이지 네이게이션 설정
+			pagination += "<div class='pagination'>";
+			pagination += "<a href='javascript:" + functionName + "(\"" + totalFirstPage + "\");' class=\"direction_left01\">[<<]</a>";
+			pagination += "<a href='javascript:" + functionName + "(" + prePerPage + ");' class=\"direction_left01\">[<]</a>";
+			for (int a = viewFirstPage; a <= ViewLastPage; a++) {
+				if (a == currentPage) {
+					pagination += "<a href='javascript:" + functionName + "(\"" + a + "\");' class='onpage'>[" + a + "]</a>";
+				} else {
+					pagination += "<a href='javascript:" + functionName + "(\"" + a + "\");'>[" + a + "]</a>";
+				}
+			}
+			pagination += "<a href='javascript:" + functionName + "(" + nextPerPage + ");' class=\"direction_right01\">[>]</a>";
+			pagination += "<a href='javascript:" + functionName + "(" + totalLastPage + ");' class=\"direction_right01\">[>>]</a>";
+			pagination += "</div>";
+	
+			int offset = ((currentPage - 1) * countPerList); // 한 화면의 표출되는 게시물의 시작 번호 (쿼리 조건절)
+	
+			// LIMIT는 가져올 row의 수, OFFSET은 몇 번째 row부터 가져올지를 결정
+			commonVO.setLimit(countPerList);
+			commonVO.setOffset(offset);
+			commonVO.setPagination(pagination);
+	
+			return commonVO;
+		}
+
+	```
 </details>
 
 <details><summary> 마이페이지 </summary>
 
-<br/>
+- 페이지 좌측에 고정되어 있는 `네비게이션 메뉴 바`에서 메뉴 선택 가능 `회원 정보` `내 식사 기록` `찜한 가게` `회원 탈퇴`
 
-- 페이지 좌측에 고정되어 있는 네비게이션 메뉴 바에서 메뉴 선택 가능 (회원정보/내 식사 기록/찜한 가게/회원 탈퇴)
-
-- 사용자의 프로필, 닉네임, 성별, 나이, 이메일 출력
-   - yyyy-MM-dd로 등록되어 있는 회원 생년월일 데이터를 만 나이로 변경해서 출력
+- 사용자의 `프로필 아이콘` `닉네임` `성별` `나이` `이메일` 출력
+   - `yyyy-MM-dd`로 등록되어 있는 `회원 생년월일 데이터`를 `만 나이`로 변경해서 출력
    ```java
     // com.EatStamp.web.MemberController
 
@@ -1044,7 +1913,7 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 	}
    ```
 
-- 카카오 회원인 경우 카카오 아이콘 출력, 일반 회원일 경우 잇스탬프 로고 아이콘 출력
+- 카카오 회원인 경우 `카카오 아이콘` 출력, 일반 회원일 경우 `잇스탬프 로고 아이콘` 출력
 
 - 비밀번호 변경
    ```
@@ -1155,9 +2024,24 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
 
 <details><summary> 회원 탈퇴 </summary>
 
-<br/>
-
-- 회원 탈퇴 주의사항 안내 및 안내사항 동의를 위한 체크박스
+- 회원 탈퇴 주의사항 안내 및 안내사항 동의를 위한 `체크박스`
+	```js
+	//체크박스 체크 누락 여부 확인
+	function CheckTest(){
+		
+		var selectCheck = document.getElementByName("checkSelect");
+		
+		for (var i =0; i<selectCheck.length; i++){
+			
+			if(selectCheck[i].checked){
+				return true;
+			}
+		}
+		
+		alert("체크박스를 확인해주세요");
+		return false;	
+	}
+	```
 
 - 현재 비밀번호와 입력한 비밀번호의 일치 여부 확인
    ```
@@ -1165,10 +2049,56 @@ OJT 기간 동안 전자정부 프레임워크를 사용하여 표준 개발 및
    - 불일치 시 ‘현재 비밀번호가 일치하지 않습니다.’ alert 출력
    ```
 
-- ‘회원 탈퇴’ 버튼 클릭 시 ‘탈퇴 완료되었습니다’ alert 출력
+- `회원 탈퇴` 버튼 클릭 시 `탈퇴 완료되었습니다` `alert` 출력
    ```
    해당 회원 정보, 작성글, 찜 정보 삭제 후 비회원 메인페이지로 이동
    ```
+	```java
+	@RequestMapping(value = "/delete_member.do", method = RequestMethod.POST)
+		public String delete_member(@RequestParam("mem_num") int mem_num, 
+						@RequestParam("mem_pwCheck")String mem_pwCheck,
+						HttpSession session) throws Exception{
+			
+
+		//vo에 값 세팅>>service단으로 넘겨주기
+		MemberVO vo = new MemberVO();	
+			vo.setMem_num(mem_num);
+			
+		//멤버 비밀번호 받아오기
+			MemberVO result = service.delete_member_check(vo);
+			
+			//입력값과 확인값 일치하나 확인
+			//탈퇴 페이지에서 입력한 비밀번호 확인값 
+			String pw1 = mem_pwCheck;
+			
+			//db에 저장된 멤버 비밀번호
+			String pw2 = result.getMem_pw();
+
+			//암호화 매치용 변수 생성
+			boolean pwdMatch;
+			
+			//비밀번호 암호화 매치 
+			pwdMatch = pwEncoder.matches(pw1, pw2);
+				//입력한 비밀번호와 비밀번호 확인 입력값이 상이할 떄
+				if(false == pwdMatch ) {
+					
+					return "/login/drawPwNotEqual";	
+				} else {
+					//회원 탈퇴 service실행
+			
+					int deletResult = service.delete_member(vo);
+					
+					if( 0 == deletResult) { //성공값 1
+						System.out.println("회원 탈퇴 실패 메시지");
+					}
+					
+					//세션 종료
+					session.invalidate();
+					return "/login/successDraw"; 
+				}
+		}
+
+	```
 
 </details>
 
