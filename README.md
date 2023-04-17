@@ -2177,3 +2177,153 @@ import org.egovframe.rte.psl.dataaccess.mapper.Mapper; 로 수정하고
 	comMap.put("start", 1);
 	comMap.put("end", 2);
    ```
+
+<br/>
+
+### 비밀번호 재설정 시 유효성 검사를 통과하지 못한 경우에도 `form`이 `submit`되는 오류
+💣 문제
+   - `form` 안에서 `AJAX`를 사용해 결과값을 받아 온 후, `SUCCESS`시 결과값을 `if문`으로 나눠 `true`와 `false`로 배당했음에도 모든 `return`값을 `true`로 인식해 `form`의 `onsubit return`을 통과
+
+💡 해결
+
+   - 미리 `true` 값의 `전역변수` 선언
+
+      ```js
+      var flag = true;
+      ```
+   - 이후 아래의 코드처럼 `AJAX` 바깥에서 `return flag`의 분기 설정
+      ```js
+      $.ajax({
+	 url : "/findPw_check.do",
+	 dataType: "text",
+	 type : "post",
+	 data:{
+			mem_email : $('#email-form').val()
+		},
+	      success : function(data){		            
+			 if(data == 0){ 
+				    //조회 데이터가 없다면
+					 flag = false;
+				                   		
+				} else { 
+				     //조회 데이터가 존재한다면
+				       flag = true;
+				                   		 
+				 } //else end
+			}, //success end
+           error : function(data){
+					flag = false;
+		   }//error end
+				         
+      }) //ajax end	
+			    	
+	 return flag;	
+      ```
+
+<br/>
+
+### `AJAX`를 통한 검색 시 `Paging` 처리가 되지 않는 문제
+💣 문제
+   - 검색 결과 리스트를 불러올 수는 있으나, 지속적인 페이징 처리 불가능
+
+💡 해결
+   - 미리 `변수`와 `리스트`의 양식을 지정해 놓은 함수를 작성하고, `AJAX` 실행 시마다 현재 `form`의 정보를 넘겨 주는 방식으로 해결
+
+		```html
+		<!--  페이징 요청하는 자바스크립트 함수명, 검색 버튼 바뀔 때마다 js단에서 처리 -->
+		<input type="hidden" id="function_name" name="function_name" value="getSearchNomalList" />
+		<input type="hidden" id="current_page_no" name="current_page_no" value="1" />
+		```
+
+		```js
+		//검색 클릭 시 호출 함수
+		function getSearchNomalList(currentPageNo){
+					
+			if(currentPageNo === undefined){
+					currentPageNo = "1";
+				}
+					
+			$("#current_page_no").val(currentPageNo);
+						
+			$.ajax({    
+								
+			url : "/search_stampCheck.do",
+			data : $("#searchForm").serialize(),
+			dataType : "JSON",
+			type     : "POST",    
+			success  : function(obj) {
+						//콜백함수 호출
+						getSearchNomalListCallBack(obj);
+												
+					},  //success end    
+								
+				}); //ajax end
+		}//일반 검색 호출 함수 end
+
+
+		//호출 함수
+		//일반 검색 콜백함수
+		function getSearchNomalListCallBack(obj){
+			
+			var state = obj.state;        
+			if(state == "SUCCESS"){
+						
+				var data = obj.data;            
+				var list = data.list;
+				var listLen = list.length;        
+				var totalCount = data.totalCount;
+				var pagination = data.pagination;
+								
+				var div = "";
+					
+				if(listLen >  0){
+							
+					for(var a=0; a<listLen; a++){
+								
+						var mem_num = list[a].mem_num; 
+						var s_num = list[a].s_num; 
+						var s_title = list[a].s_title; 
+						var s_FileName   = list[a].s_FileName; 
+						var s_fileLoca   = list[a].s_fileLoca; 
+						var s_content  = list[a].s_content; 
+						var reg_date = list[a].reg_date; 
+						var r_num = list[a].r_num; 
+						var search_keyword = list[a].search_keyword;
+								
+							//이하 리스트 div구성 
+					} 
+							
+					} else {
+							
+						div += "<div>";
+						div += "<span'>검색된 게시글이 존재하지 않습니다.</span>";
+						div += "</div>";
+					}
+						
+			$("#search_result").html(div);
+			$("#total_count").text(totalCount);
+			$("#pagination").html(pagination);
+		}     	
+					
+		}//일반 호출 콜백 함수 end	
+
+		```
+
+<br/>
+
+### `가게 찜하기` → `찜하기 취소` 기능이 연달아 작동하지 않는 문제
+💣 문제
+   - `<c:if>` 태그를 사용하여 해당 가게의 찜 여부 ui를 분리하였으나 `AJAX`를 사용해 작업을 반복하는 과정에서 찜 삭제에 필요한 컬럼(`r_like_num`)값이 들어있지 않았음
+
+💡 해결
+   - 찜하지 않은 가게에도 정보 전송용으로 `hidden type`의 `input`을 설정해준 후, 해당 `AJAX` 실행 다음에 필요한 파라미터값을 조회하는 `AJAX` 추가
+
+		```html					
+		<!-- ajax용 r_num, r_rlike_num  -->
+		<input type="hidden"  id="r_num"  value="${list.r_num }"/> 
+		<input type="hidden"  id="r_like_num" />
+		``` 
+   - 받아 온 파라미터로 미리 설정해 둔 `input`에 `attr` 메소드를 사용해 값 할당
+		```js
+		$("#r_like_num").attr('value', data);
+		```
